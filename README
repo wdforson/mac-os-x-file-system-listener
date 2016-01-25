@@ -1,0 +1,49 @@
+This is a tool for Mac OS X that allows you to register a listener that watches for file system events under a specific directory and invokes a callback whenever any such events are observed.
+
+I wrote the code in fs_listener.c:
+a) in less than an hour,
+b) mostly by copying and pasting some sample code from some Apple documentation,
+c) without making any reasonable effort to understand:
+   1) failure modes
+   2) features of the file system eventing system that might be leveraged to do things more nicely
+      (for instance, do event payloads indicate semantic information about the events?
+       e.g. 'file X has been modified?')
+d) and I have no idea what versions of Mac OS X it does or doesn't work on
+   (although I've now used it on Mountain Lion, Mavericks, Yosemite, and El Capitan)
+
+
+Here's an example usage (here, the callback is a python script which computes hashes of
+all source files under the specified source tree and compares them to a persisted record
+of such hashes, dumping the contents of the persisted hash file to stdout whenever any
+changes ARE detected...see do_cmd_if_source_has_change.py):
+
+$ ./compile.sh
+$ ./fs_listener test_dir \
+                python \
+                do_cmd_if_source_has_changed.py \
+                --source_tree_root test_dir \
+                --executable cat \
+                --args test_dir/.do_cmd_if_source_has_changed_py_metadata.json
+
+...then, in another shell (in the same directory in which the commands above were issued):
+
+$ mkdir test_dir
+
+# commands that DO make changes in the source directory
+$ echo 'foo' > test_dir/foo
+$ echo 'bar' > test_dir/bar
+
+# a command that does NOT actually change the contents of the source directory,
+# although it will generate a file system event
+$ echo 'foo' > test_dir/foo
+
+# and another command that DOES mutate the source directory
+$ echo 'new line' >> test_dir/foo
+
+
+As this example illustrates, the basic use case, for which I created this tool, is to throw together a poor-man's IDE, consisting of at least two shells: one running the 'fs_listener' process to detect changes in any source files under a specified source tree (and invoking some script, e.g. some unit tests or a sample command line app, when changes are found), along with one or more other shells, in which source files are being edited (or really, this could be any text editing program).
+
+In a nutshell: you're editing files in one window, and whenever you save changes to those files, some command-line program automatically gets run in another window.
+
+The only thing that makes this tool even remotely worthwhile is that it's reasonably easy to use with different programming languages. For instance, say you want to use the tool with Scala: you could just write a little shell script that invokes the scala compiler, then, if compilation succeeds, executes a test suite -- and you would just pass that script as the '--executable' argument to do_cmd_if_source_has_change.py (in place of where 'cat' is used in the example above).
+
