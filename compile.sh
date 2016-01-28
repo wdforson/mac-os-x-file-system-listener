@@ -1,1 +1,1 @@
-gcc fs_listener.c -o fs_listener -framework CoreServices
+gcc fs_listener.c -o bin/fs_listener -framework CoreServices
