@@ -1,3 +1,5 @@
+#! /usr/bin/python2.7
+
 from argparse import ArgumentParser
 import hashlib
 import json
