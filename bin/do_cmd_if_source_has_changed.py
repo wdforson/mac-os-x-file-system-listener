@@ -1,1 +1,0 @@
-/Users/wdf/Code/personal/mac-os-x-file-system-listener/do_cmd_if_source_has_changed.py
