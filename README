@@ -21,7 +21,7 @@ $ ./compile.sh
 $ ./fs_listener test_dir \
                 python \
                 do_cmd_if_source_has_changed.py \
-                --source_tree_root test_dir \
+                --source-tree-root test_dir \
                 --executable cat \
                 --args test_dir/.do_cmd_if_source_has_changed_py_metadata.json
 

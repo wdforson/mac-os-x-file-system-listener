@@ -14,7 +14,7 @@ def compute_hashes_for_all_source_files(source_tree_root, dirpath_filename_predi
     for filename in filenames:
       # ignore files that are rejected by dirpath_filename_predicate
       if dirpath_filename_predicate(dirpath, filename):
-        filepath = os.path.join(dirpath, filename)
+        filepath = os.path.join(os.path.abspath(dirpath), filename)
         filepaths_to_hashes[filepath] = hash_file(filepath)
 
   return filepaths_to_hashes
@@ -45,6 +45,7 @@ DEFAULT_METADATA_FILENAME = '.do_cmd_if_source_has_changed_py_metadata.json'
 def main():
   args = parse_args()
   metadata_filepath = args.metadata_filepath or os.path.join(args.source_tree_root, DEFAULT_METADATA_FILENAME)
+  directories_to_ignore = set(os.path.abspath(d) for d in args.directories_to_ignore)
 
   # load the most recently recorded filepath->md5 hash mapping
   prev_mapping = load_potentially_empty_json_object(metadata_filepath)
@@ -54,6 +55,7 @@ def main():
   def dirpath_filename_predicate(dirpath, filename):
     return not (filter(lambda p: filename.startswith(p), args.prefixes_to_ignore) or
                 filter(lambda s: filename.endswith(s), args.suffixes_to_ignore) or
+                filter(lambda d: os.path.abspath(dirpath).startswith(d), directories_to_ignore) or
                 os.path.join(dirpath, filename) == metadata_filepath)
 
   # re-compute an md5 hash for all non-ignorable files under the relevant source tree
@@ -71,28 +73,30 @@ def main():
 
 def parse_args():
   parser = ArgumentParser()
-  parser.add_argument('--source_tree_root', '-r', required=True,
+  parser.add_argument('--source-tree-root', '-r', required=True,
       help='root directory of the source tree that should be scanned for changes')
   parser.add_argument('--executable', '-e', required=True,
       help='executable to run whenever source changes are detected')
 
   # FIXME: what is the best way to pass these args in on the command line?
   #        problem: suppose 'ls' is specified as the executable, and '-r' is specified as one of its arguments
-  #                 ...argparse will treat that '-r' as a '--source_tree_root' argument
+  #                 ...argparse will treat that '-r' as a '--source-tree-root' argument
   #        one option would be [arg.lstrip() for arg in args], which would allow a user to pass in ' -r',
   #        which argparse will NOT recognize as an argument.
   #        BUT, wouldn't this produce non-obvious behavior for anyone who is not trying to specifically escape
   #        an argument value that is known to collide with a flag name? (e.g. someone who simply wants to pass
   #        in a string such as '  foo  ', which happens to contain leading whitespace)
-  parser.add_argument('--args', '-a', nargs='*',
+  parser.add_argument('--args', '-a', nargs='*', default=[],
       help='arguments to pass to the specified executable that is run whenever source changes are detected')
 
-  parser.add_argument('--prefixes_to_ignore', '-p', nargs='*', default=['.'],
+  parser.add_argument('--prefixes-to-ignore', nargs='*', default=['.'],
       help='filenames with the specified prefix will be ignored when scanning for source changes')
-  parser.add_argument('--suffixes_to_ignore', '-s', nargs='*', default=[],
+  parser.add_argument('--suffixes-to-ignore', nargs='*', default=[],
       help='filenames with the specified suffix will be ignored when scanning for source changes')
-  parser.add_argument('--metadata_filepath', '-m',
-      help='filepath to use to store metadata used by this script. defaults to $(--source_tree_root)/{}'.format(
+  parser.add_argument('--directories-to-ignore', nargs='*', default=[],
+      help='paths (relative or absolute) to directories to ignore when scanning for source changes')
+  parser.add_argument('--metadata-filepath', '-m',
+      help='filepath to use to store metadata used by this script. defaults to $(--source-tree-root)/{}'.format(
         DEFAULT_METADATA_FILENAME))
 
   return parser.parse_args()
